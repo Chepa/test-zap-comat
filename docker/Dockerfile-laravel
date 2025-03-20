@@ -1,0 +1,24 @@
+FROM php:8.2-fpm
+
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    zip \
+    unzip \
+    libpng-dev \
+    libonig-dev \
+    libxml2-dev \
+    libzip-dev \
+    && docker-php-ext-install pdo pdo_mysql mbstring exif pcntl bcmath gd \
+    && docker-php-ext-install exif
+
+WORKDIR /var/www/html
+
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+#Копируем entrypoint в контейнер - установка composer и пр. через entrypoint, т.к. содержимое проекта стримится в образ, а не копируется и при выполнении Dockerfile не доступно
+COPY docker/php-entrypoint.sh /usr/local/bin/php-entrypoint.sh
+RUN chmod +x /usr/local/bin/php-entrypoint.sh
+ENTRYPOINT ["php-entrypoint.sh"]
+
+CMD ["php-fpm"]

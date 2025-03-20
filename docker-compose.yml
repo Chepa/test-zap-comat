@@ -1,0 +1,53 @@
+services:
+  # ------------------------
+  # 1) MySQL
+  # ------------------------
+  test-task-database:
+    container_name: test-task-database
+    image: mysql:8.0
+    environment:
+      MYSQL_ROOT_PASSWORD: ZcW1knBAIlX
+      MYSQL_DATABASE: laravel  
+    ports:
+      - "6970:3306" #порт наружу, чтобы можно было смотреть содержимое БД через сторонние менеджеры
+    networks:
+      - test-task-network
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # ------------------------
+  # 2) PHP-FPM (Laravel)
+  # ------------------------
+  test-task-laravel:
+    container_name: test-task-laravel
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-laravel
+    volumes:
+      - .:/var/www/html
+    networks:
+      - test-task-network
+
+  # ------------------------
+  # 3) Nginx
+  # ------------------------
+  test-task-webserver:
+    container_name: test-task-webserver
+    build:
+      context: .
+      dockerfile: ./docker/Dockerfile-webserver
+    depends_on:
+      - test-task-laravel
+    ports:
+      - "6969:80"  # внешний порт:внутренний порт
+    networks:
+      - test-task-network
+    volumes:
+      - .:/var/www/html
+
+networks:
+  test-task-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
