@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
+use App\Models\RecommendedProduct;
 use Illuminate\Contracts\View\View;
 
 class ProductController extends Controller
@@ -23,8 +24,7 @@ class ProductController extends Controller
     public function show(Product $product): View
     {
         $product->load('recommended.product');
-        $linkedProducts = getLinkedProductsCount($product->id);
 
-        return view('products.show', compact('product','linkedProducts'));
+        return view('products.show', compact('product'));
     }
 }
