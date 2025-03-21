@@ -3,14 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use Illuminate\Http\Request;
+use Illuminate\Contracts\View\View;
 
 class ProductController extends Controller
 {
     /**
      * Список товаров с пагинацией по 100.
      */
-    public function index()
+    public function index(): View
     {
         $products = Product::paginate(100);
 
@@ -20,8 +20,11 @@ class ProductController extends Controller
     /**
      * Страница конкретного товара.
      */
-    public function show(Product $product)
+    public function show(Product $product): View
     {
-        return view('products.show', compact('product'));
+        $product->load('recommended.product');
+        $linkedProducts = getLinkedProductsCount($product->id);
+
+        return view('products.show', compact('product','linkedProducts'));
     }
 }

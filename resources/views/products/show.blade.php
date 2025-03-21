@@ -10,6 +10,18 @@
 
     <a href="{{ route('products.index') }}">Вернуться в каталог</a>
 
-    <p>[Тут должна быть перелинковка]</p>
+    <p>Товаров ссылается: {{ $linkedProducts }}</p>
+
+    <p>Рекомендуемые товары:</p>
+    <ul>
+        @foreach($product->recommended as $recommendedProduct)
+            <li>
+                <p>
+                    <a href="{{ route('products.show', ['product' => $recommendedProduct->product->id]) }}"><strong>Название:</strong> {{ $recommendedProduct->product->name }}
+                    </a></p>
+                <p><strong>Частотность:</strong> {{ $recommendedProduct->product->frequency }}</p>
+            </li>
+        @endforeach
+    </ul>
 @endsection
 

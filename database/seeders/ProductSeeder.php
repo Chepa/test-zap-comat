@@ -35,6 +35,7 @@ class ProductSeeder extends Seeder
             $products[] = [
                 'name'      => $randomName,
                 'frequency' => $frequency,
+                'created_at' => now(),
             ];
         }
 
