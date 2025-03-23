@@ -10,9 +10,11 @@
 
     <a href="{{ route('products.index') }}">Вернуться в каталог</a>
 
+    <p>Колличество ссылаемых товаров: {{ $linkedCount }}</p>
+
     <p>Рекомендуемые товары:</p>
     <ul>
-        @foreach($product->recommended as $recommendedProduct)
+        @foreach($recommended as $recommendedProduct)
             <li>
                 <p>
                     <a href="{{ route('products.show', ['product' => $recommendedProduct->product->id]) }}"><strong>Название:</strong> {{ $recommendedProduct->product->name }}

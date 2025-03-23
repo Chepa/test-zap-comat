@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 
 class GenerateRecommendedProducts extends Command
 {
-    protected $signature = 'app:generate-recommended-products {--fresh}';
+    protected $signature = 'app:generate-recommended-products {--fresh} {--product=}';
     protected $description = 'Generate recommended products';
 
     public function handle(RecommendedProductService $service): void
@@ -18,6 +18,13 @@ class GenerateRecommendedProducts extends Command
             DB::table(RecommendedProduct::getModel()->getTable())->truncate();
         }
 
-        $service->generate();
+        $id = $this->option('product');
+        if ($id) {
+            DB::table(RecommendedProduct::getModel()->getTable())
+                ->where('product_id', $id)
+                ->delete();
+        }
+
+        $service->generate((int) $id);
     }
 }

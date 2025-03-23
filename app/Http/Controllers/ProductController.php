@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Product;
-use App\Models\RecommendedProduct;
+use App\Services\RecommendedProductService;
 use Illuminate\Contracts\View\View;
 
 class ProductController extends Controller
 {
+    public function __construct(private readonly RecommendedProductService $service)
+    {
+    }
+
     /**
      * Список товаров с пагинацией по 100.
      */
@@ -24,7 +28,11 @@ class ProductController extends Controller
     public function show(Product $product): View
     {
         $product->load('recommended.product');
+        $linkedCount = $this->service->linkedCount($product->id);
+        $recommended = $product->recommended->sortByDesc(function ($recommended) {
+            return $recommended->product->frequency;
+        });
 
-        return view('products.show', compact('product'));
+        return view('products.show', compact('product', 'recommended', 'linkedCount'));
     }
 }

@@ -4,15 +4,35 @@ namespace App\Services;
 
 use App\Jobs\SaveRecommendedProductJob;
 use App\Models\Product;
+use App\Models\RecommendedProduct;
+use Illuminate\Database\Eloquent\Builder as Eloquent;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Database\Eloquent\Builder as Eloquent;
 
 class RecommendedProductService
 {
     const PRODUCT_LIMIT = 20;
     const CHUNK_COUNT = 100;
+
+    private array $genders = [
+        'мужская',
+        'женская',
+        'унисекс'
+    ];
+
+    private array $sizes = [
+        'XXXS',
+        'XXS',
+        'XS',
+        'S',
+        'M',
+        'L',
+        'XL',
+        'XXL',
+        'XXXL',
+        'XXXXL'
+    ];
 
     /**
      * Start processing of saving recommendations
@@ -38,27 +58,25 @@ class RecommendedProductService
      */
     public function recommendedProducts(Product $product): array
     {
-        $nameParts = explode(' ', $product->name);
-        $category = $nameParts[0] ?? '';
-        $gender = $nameParts[1] ?? '';
-        $size = $nameParts[count($nameParts) - 1];
+        $productGender = array_values(
+            array_filter($this->genders, fn($gender) => str_contains($product->name, $gender))
+        )[0];
+        $size = array_values(
+            array_filter($this->sizes, fn($size) => str_contains($product->name, $size))
+        )[0];
 
-        return DB::table(Product::getModel()->getTable())
+        $subQuery = DB::table(Product::getModel()->getTable())
             ->select(['id'])
-            ->where(function (Builder $query) use ($nameParts, $category, $gender, $size) {
-                if ($category && $gender && $size) {
-                    $query->where('name', 'like', "%$category%")
-                        ->where('name', 'like', "%$gender%")
-                        ->where('name', 'like', "% $size%");
-                } elseif ($gender && $size) {
-                    $query->where('name', 'like', "%$gender%")
-                        ->where('name', 'like', "% $size%");
-                } else {
-                    $query->where('name', 'like', "%$nameParts[0]%");
-                }
+            ->where(function (Builder $query) use ($product, $productGender, $size) {
+                $query->where(fn() => $query
+                    ->where('name', 'like', "%$productGender%")
+                    ->where('name', 'like', "% $size%"))
+                    ->whereNot('id', $product->id);
             })
-            ->where('id', '!=', $product->id)
-            ->orderBy('frequency', 'desc')
+            ->orderBy('frequency', 'desc');
+
+        return DB::query()->fromSub($subQuery, 't')
+            ->orderBy(DB::raw('RAND()'))
             ->limit(self::PRODUCT_LIMIT)
             ->get()
             ->pluck('id')
@@ -67,5 +85,14 @@ class RecommendedProductService
                 'recommended_product_id' => $id,
             ])
             ->toArray();
+    }
+
+    public function linkedCount($productId): int
+    {
+        return DB::table(RecommendedProduct::getModel()->getTable())
+            ->where(
+                'recommended_product_id',
+                $productId
+            )->count();
     }
 }
