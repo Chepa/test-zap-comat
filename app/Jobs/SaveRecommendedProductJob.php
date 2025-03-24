@@ -13,6 +13,9 @@ class SaveRecommendedProductJob implements ShouldQueue
 {
     use Queueable;
 
+    public int $retryAfter = 60;
+
+
     public function __construct(protected Collection $products)
     {
     }

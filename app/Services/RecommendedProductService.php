@@ -6,33 +6,12 @@ use App\Jobs\SaveRecommendedProductJob;
 use App\Models\Product;
 use App\Models\RecommendedProduct;
 use Illuminate\Database\Eloquent\Builder as Eloquent;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class RecommendedProductService
 {
-    const PRODUCT_LIMIT = 20;
-    const CHUNK_COUNT = 100;
-
-    private array $genders = [
-        'мужская',
-        'женская',
-        'унисекс'
-    ];
-
-    private array $sizes = [
-        'XXXS',
-        'XXS',
-        'XS',
-        'S',
-        'M',
-        'L',
-        'XL',
-        'XXL',
-        'XXXL',
-        'XXXXL'
-    ];
+    const CHUNK_COUNT = 10;
 
     /**
      * Start processing of saving recommendations
@@ -47,7 +26,7 @@ class RecommendedProductService
                 fn(Eloquent $query) => $query->whereDoesntHave('recommended'),
                 fn(Eloquent $query) => $query->where('id', $productId)
             )->chunkById(self::CHUNK_COUNT, function (Collection $chunk) {
-                SaveRecommendedProductJob::dispatch($chunk);
+                SaveRecommendedProductJob::dispatch($chunk)->delay(5);
             });
     }
 
@@ -58,37 +37,29 @@ class RecommendedProductService
      */
     public function recommendedProducts(Product $product): array
     {
-        $productGender = array_values(
-            array_filter($this->genders, fn($gender) => str_contains($product->name, $gender))
-        )[0];
-        $size = array_values(
-            array_filter($this->sizes, fn($size) => str_contains($product->name, $size))
-        )[0];
+        $productPartName = explode(' ', $product->name);
+        $sql = 'select *, ';
+        $parts = $productPartName;
+        foreach ($productPartName as $key => $part) {
+            $sql .= 'IF((`name` like "%' . implode('%" and `name` like "%', $parts) . '%"), ' . count($parts)
+                . ', ';
+            unset($parts[$key]);
+        }
+        $sql .= '0' . str_repeat(')', count($productPartName)) . ' as matches';
+        $sql .= ' from products';
+        $sql .= ' where id != ' . $product->id . ' having matches != 0';
+        $sql .= ' ORDER BY matches * frequency * ROUND((RAND() * (2-1))+1) DESC';
+        $sql .= ' LIMIT 20';
 
-        $subQuery = DB::table(Product::getModel()->getTable())
-            ->select(['id'])
-            ->where(function (Builder $query) use ($product, $productGender, $size) {
-                $query->where(fn() => $query
-                    ->where('name', 'like', "%$productGender%")
-                    ->where('name', 'like', "% $size%"))
-                    ->whereNot('id', $product->id);
-            })
-            ->orderBy('frequency', 'desc');
-
-        return DB::query()->fromSub($subQuery, 't')
-            ->orderBy(DB::raw('RAND()'))
-            ->limit(self::PRODUCT_LIMIT)
-            ->get()
-            ->pluck('id')
-            ->map(fn(int $id) => [
-                'product_id' => $product->id,
-                'recommended_product_id' => $id,
-            ])
-            ->toArray();
+        return array_map(fn($object) => [
+            'product_id' => $product->id,
+            'recommended_product_id' => $object->id
+        ], DB::select($sql));
     }
 
-    public function linkedCount($productId): int
-    {
+    public function linkedCount(
+        $productId
+    ): int {
         return DB::table(RecommendedProduct::getModel()->getTable())
             ->where(
                 'recommended_product_id',

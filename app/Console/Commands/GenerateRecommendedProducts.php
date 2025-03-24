@@ -25,6 +25,6 @@ class GenerateRecommendedProducts extends Command
                 ->delete();
         }
 
-        $service->generate((int) $id);
+        $service->generate($id);
     }
 }
